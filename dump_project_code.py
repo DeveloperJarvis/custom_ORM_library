@@ -9,7 +9,7 @@ import tokenize
 PROJECT_ROOT = "."          # Root folder to traverse
 OUTPUT_FILE = "code.txt"    # Output file
 INCLUDE_EXTENSIONS = {".py"}    # file types to include
-
+INCLUDE_FILES = {}
 EXCLUDE_DIRS = {
     ".git",
     "__pycache__",
@@ -58,8 +58,12 @@ def dump_project_code(root_dir: str, output_file: str):
 
             for filename in sorted(files):
                 ext = os.path.splitext(filename)[1]
-                if ext not in INCLUDE_EXTENSIONS:
+                is_python = ext in INCLUDE_EXTENSIONS
+                is_explicit = filename in INCLUDE_FILES
+
+                if not (is_python or is_explicit):
                     continue
+
 
                 if filename == "dump_project_code.py":
                     continue  # Skip this file
