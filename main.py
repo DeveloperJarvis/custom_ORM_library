@@ -28,9 +28,38 @@
 # --------------------------------------------------
 
 # --------------------------------------------------
-# <MODULE_NAME> MODULE
+# main MODULE
 # --------------------------------------------------
-
+"""
+Custom ORM Libraray - Entry Point
+"""
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from config.config import settings
+from custom_orm.database.connection import DatabaseConnection
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.models.registry import ModelRegistry
+
+
+def bootstrap():
+    """
+    Initialize database connection and generate schema.
+    """
+    DatabaseConnection.initialize(
+        database=settings.DATABASE_PATH,
+        echo=settings.SQL_ECHO,
+    )
+
+    # Generate tables for all registered models
+    SchemaGenerator.generate_all(ModelRegistry.all())
+
+
+def main():
+    bootstrap()
+
+    print("Custom ORM initialized successfully.")
+
+
+if __name__ == "__main__":
+    main()

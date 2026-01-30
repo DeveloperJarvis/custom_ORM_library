@@ -34,4 +34,24 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.connection import DatabaseConnection
 
+
+# --------------------------------------------------
+# SQL executor
+# --------------------------------------------------
+class SQLExecutor:
+    @staticmethod
+    def execute(sql: str, params=None):
+        conn = DatabaseConnection.get_connection()
+        cursor = conn.cursor()
+
+        if DatabaseConnection._state.echo:
+            print(sql, params)
+        
+        cursor.execute(sql, params or [])
+
+        if not conn.in_transaction:
+            conn.commit()
+            
+        return cursor

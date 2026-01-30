@@ -34,4 +34,8 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.query.expressions import Expression
 
+
+def test_expression_base():
+    assert Expression() is not None

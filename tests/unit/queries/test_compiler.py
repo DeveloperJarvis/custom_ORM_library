@@ -34,4 +34,20 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.query.compiler import SQLCompiler
+from custom_orm.query.query import Query
 
+
+# --------------------------------------------------
+# dummy
+# --------------------------------------------------
+class Dummy:
+    __name__ = "dummy"
+
+
+def test_compile_select():
+    q = Query(Dummy).filter(id=1)
+    sql, params = SQLCompiler.compile_select(q)
+
+    assert "SELECT" in sql
+    assert params == [1]

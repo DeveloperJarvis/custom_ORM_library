@@ -1,0 +1,804 @@
+# main.py:
+"""
+Custom ORM Libraray - Entry Point
+"""
+from config.config import settings
+from custom_orm.database.connection import DatabaseConnection
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.models.registry import ModelRegistry
+def bootstrap():
+    """
+    Initialize database connection and generate schema.
+    """
+    DatabaseConnection.initialize(
+        database=settings.DATABASE_PATH,
+        echo=settings.SQL_ECHO,
+    )
+    SchemaGenerator.generate_all(ModelRegistry.all())
+def main():
+    bootstrap()
+    print("Custom ORM initialized successfully.")
+if __name__ == "__main__":
+    main()
+
+
+# setup.py:
+"""
+Purpose: packaging, installation, dependency declaration.
+"""
+from setuptools import setup, find_packages
+setup(
+    name="custom-orm",
+    version="0.1.0",
+    description="A lightweight custom ORM mapping Python objects to SQLite",
+    author="Developer Jarvis",
+    author_email="developerjarvis@github.com",
+    url="https://github.com/DeveloperJarvis/custom_ORM_library",
+    license="GPL-3.0-or-later",
+    packages=find_packages(
+        exclude=("tests*", "logs*")
+    ),
+    include_package_data=True,
+    python_requires=">=3.9",
+    install_requires=[],
+    extras_require={
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "black",
+            "flake8",
+            "mypy",
+        ]
+    },
+    classifiers=[
+        "Programming Langauge :: Python :: 3",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "Operating System :: OS Independent",
+        "Topic :: Database",
+        "Topic :: Software Development :: Libraries",
+    ],
+)
+
+
+# config\__init__.py:
+"""
+Purpose: make configuration import-friendly
+"""
+from config.config import settings
+__all__ = ["settings"]
+
+
+# config\config.py:
+"""
+Purpose: centralized configuration (simple, explicit,
+test-friendly).
+"""
+import os
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class Settings:
+    """
+    Application configuration.
+    """
+    DATABASE_PATH: str = os.getenv("CUSTOM_ORM_DB",
+                                   "custome_orm.db")
+    SQL_ECHO: bool = os.getenv("CUSTOM_ORM_SQL_ECHO",
+                               "false").lower() == "true"
+    BASE_DIR = os.path.join(os.path.abspath(__file__),
+                            "..")
+    LOG_DIR = os.path.join(BASE_DIR, "logs")
+    LOG_FILE = os.path.join(LOG_DIR, "custom_orm.log")
+    LOG_FORMAT = "[%(asctime)s] [%(levelname)s] %(name)s: %(message)s"
+    ENV: str = os.getenv("CUSTOM_ORM_ENV", "development")
+settings = Settings()
+
+
+# custom_orm\__init__.py:
+__version__ = "0.1.0"
+
+
+# custom_orm\database\__init__.py:
+from .connection import DatabaseConnection
+from .executor import SQLExecutor
+from .transaction import Transaction
+__all__ = [
+    "DatabaseConnection",
+    "SQLExecutor",
+    "Transaction",
+]
+
+
+# custom_orm\database\connection.py:
+import sqlite3
+from threading import local
+class DatabaseConnection:
+    _state = local()
+    @classmethod
+    def initialize(cls, database: str, echo: bool = False):
+        cls._state.database = database
+        cls._state.echo = echo
+        cls._state.connection = None
+    @classmethod
+    def get_connection(cls):
+        if not hasattr(cls._state, "database"):
+            raise RuntimeError(
+                "DatabaseConnection.initialize() must "
+                "be called first"
+            )
+        if getattr(cls._state, "connection", None) is None:
+            cls._state.connection = sqlite3.connect(
+                cls._state.database
+            )
+            cls._state.connection.row_factory = sqlite3.Row
+        return cls._state.connection
+    @classmethod
+    def close(cls):
+        conn = getattr(cls._state, "connection", None)
+        if conn:
+            conn.close()
+            cls._state.connection = None
+
+
+# custom_orm\database\executor.py:
+from custom_orm.database.connection import DatabaseConnection
+class SQLExecutor:
+    @staticmethod
+    def execute(sql: str, params=None):
+        conn = DatabaseConnection.get_connection()
+        cursor = conn.cursor()
+        if DatabaseConnection._state.echo:
+            print(sql, params)
+        cursor.execute(sql, params or [])
+        if not conn.in_transaction:
+            conn.commit()
+        return cursor
+
+
+# custom_orm\database\transaction.py:
+from custom_orm.database.connection import DatabaseConnection
+class Transaction:
+    def __enter__(self):
+        self.conn = DatabaseConnection.get_connection()
+        self.conn.execute("BEGIN")
+        return self
+    def __exit__(self, exc_type, exc, tb):
+        if exc:
+            self.conn.execute("ROLLBACK")
+        else:
+            self.conn.execute("COMMIT")
+
+
+# custom_orm\exceptions\__init__.py:
+from .base import ORMError
+from .database import DatabaseError
+from .query import QueryError
+from .schema import SchemaError
+__all__ = [
+    "ORMError",
+    "DatabaseError",
+    "QueryError",
+    "SchemaError",
+]
+
+
+# custom_orm\exceptions\base.py:
+class ORMError(Exception):
+    """Base ORM exception."""
+
+
+# custom_orm\exceptions\database.py:
+from .base import ORMError
+class DatabaseError(ORMError):
+    pass
+
+
+# custom_orm\exceptions\query.py:
+from .base import ORMError
+class QueryError(ORMError):
+    pass
+
+
+# custom_orm\exceptions\schema.py:
+from .base import ORMError
+class SchemaError(ORMError):
+    pass
+
+
+# custom_orm\fields\__init__.py:
+from .base import Field
+from .scalar import (
+    IntegerField,
+    TextField,
+    BooleanField,
+)
+from .relational import ForeignKey
+__all__ = [
+    "Field",
+    "IntegerField",
+    "TextField",
+    "BooleanField",
+    "ForeignKey",
+]
+
+
+# custom_orm\fields\base.py:
+class Field:
+    def __init__(
+            self,
+            primary_key=False,
+            nullable=True,
+            default=None,
+        ):
+        self.name = None
+        self.primary_key = primary_key
+        self.nullable = nullable
+        self.default = default
+    def contribute_to_class(self, name):
+        self.name = name
+    def validate(self, value):
+        if value is None and not self.nullable:
+            raise ValueError(
+                f"{self.name} cannot be NULL"
+            )
+
+
+# custom_orm\fields\relational.py:
+from .base import Field
+class ForeignKey(Field):
+    sql_type = "INTEGER"
+    def __init__(self, to, **kwargs):
+        super().__init__(**kwargs)
+        self.to = to
+
+
+# custom_orm\fields\scalar.py:
+from .base import Field
+class IntegerField(Field):
+    sql_type = "INTEGER"
+class TextField(Field):
+    sql_type = "TEXT"
+class BooleanField(Field):
+    sql_type = "BOOLEAN"
+
+
+# custom_orm\migrations\__init__.py:
+from .manager import MigrationManager
+__all__ = ["MigrationManager"]
+
+
+# custom_orm\migrations\manager.py:
+import importlib
+import os
+from typing import List
+from custom_orm.database.connection import DatabaseConnection
+from custom_orm.database.executor import SQLExecutor
+class MigrationManager:
+    """
+    Handles database migrations.
+    """
+    MIGRATIONS_TABLE = "_migrations"
+    def __init__(self, migrations_path: str):
+        self.migrations_path = migrations_path
+    def migrate(self):
+        """
+        Apply all pending migrations.
+        """
+        self._ensure_migrations_table()
+        applied = self._get_applied_migrations()
+        available = self._get_available_migrations()
+        for migration in available:
+            if migration not in applied:
+                self._apply_migration(migration)
+    def _ensure_migrations_table(self):
+        SQLExecutor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {self.MIGRATIONS_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    def _get_applied_migrations(self) -> List[str]:
+        cursor = SQLExecutor.execute(
+            f"SELECT name FROM {self.MIGRATIONS_TABLE}"
+        )
+        return [row["name"] for row in cursor.fetchall()]
+    def _get_available_migrations(self) -> List[str]:
+        files = []
+        for filename in os.listdir(self.migrations_path):
+            if (filename.endswith(".py")
+                and filename != "__init__.py"):
+                files.append(filename.replace(".py", ""))
+        return sorted(files)
+    def _apply_migration(self, migration_name: str):
+        module = self._load_migration_module(
+            migration_name)
+        if not hasattr(module, "upgrade"):
+            raise RuntimeError(
+                f"Migration '{migration_name}' is "
+                "missing upgrade()"
+            )
+        conn = DatabaseConnection.get_connection()
+        cursor = conn.cursor()
+        try:
+            module.upgrade(cursor)
+            cursor.execute(
+                f"""
+                INSERT INTO {self.MIGRATIONS_TABLE} (name)
+                VALUES (?)
+                """,
+                (migration_name,),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    def _load_migration_module(self, name: str):
+        """
+        Dynamically import a migration module.
+        """
+        module_path = self._module_import_path(name)
+        return importlib.import_module(module_path)
+    def _module_import_path(self, name: str) -> str:
+        """
+        Convert filesystem path to Python import path.
+        """
+        base = self.migrations_path.replace(
+            os.sep, ".").strip(".")
+        return f"{base}.{name}"
+
+
+# custom_orm\models\__init__.py:
+from .base import Model
+from .registry import ModelRegistry
+__all__ = [
+    "Model",
+    "ModelRegistry",
+]
+
+
+# custom_orm\models\base.py:
+from custom_orm.schema.inspector import inspect_model
+from custom_orm.models.registry import ModelRegistry
+class ModelMeta(type):
+    def __new__(cls, name, bases, attrs):
+        model = super().__new__(cls, name, bases, attrs)
+        if name != "Model":
+            inspect_model(model)
+            ModelRegistry.register(model)
+        return model
+class Model(metaclass=ModelMeta):
+    def __init__(self, **kwargs):
+        for name, field in self._meta.fields.items():
+            if name in kwargs:
+                setattr(self, name, kwargs[name])
+            else:
+                setattr(self, name, field.default)
+
+
+# custom_orm\models\registry.py:
+class ModelRegistry:
+    _models = []
+    @classmethod
+    def register(cls, model):
+        cls._models.append(model)
+    @classmethod
+    def all(cls):
+        return cls._models
+
+
+# custom_orm\query\__init__.py:
+from .query import Query
+__all__ = ["Query"]
+
+
+# custom_orm\query\compiler.py:
+class SQLCompiler:
+    @staticmethod
+    def compile_select(query):
+        table = query.model.__name__.lower()
+        sql = f"SELECT * FROM {table}"
+        params = []
+        if query.filters:
+            clauses = []
+            for cond in query.filters:
+                for k, v in cond.items():
+                    clauses.append(f"{k} = ?")
+                    params.append(v)
+            sql += " WHERE " + " AND ".join(clauses)
+        return sql, params
+
+
+# custom_orm\query\expressions.py:
+class Expression:
+    pass
+
+
+# custom_orm\query\query.py:
+class Query:
+    def __init__(self, model):
+        self.model = model
+        self.filters = []
+    def filter(self, **conditions):
+        self.filters.append(conditions)
+        return self
+
+
+# custom_orm\schema\__init__.py:
+from .metadata import ModelMetadata
+from .generator import SchemaGenerator
+__all__ = [
+    "ModelMetadata",
+    "SchemaGenerator",
+]
+
+
+# custom_orm\schema\generator.py:
+from custom_orm.database.executor import SQLExecutor
+class SchemaGenerator:
+    @staticmethod
+    def generate(model):
+        columns = []
+        for name, field in model._meta.fields.items():
+            col = f'"{name}" {field.sql_type}'
+            if field.primary_key:
+                col += " PRIMARY KEY"
+            columns.append(col)
+        sql = f"""
+        CREATE TABLE IF NOT EXISTS 
+        "{model._meta.table_name}" ({', '.join(columns)}
+        )
+        """
+        SQLExecutor.execute(sql)
+    @classmethod
+    def generate_all(cls, models):
+        for model in models:
+            cls.generate(model)
+
+
+# custom_orm\schema\inspector.py:
+from custom_orm.fields.base import Field
+from custom_orm.schema.metadata import ModelMetadata
+def inspect_model(model):
+    fields = {}
+    for name, attr in model.__dict__.items():
+        if isinstance(attr, Field):
+            attr.contribute_to_class(name)
+            fields[name] = attr
+    model._meta = ModelMetadata(
+        table_name=model.__name__.lower(),
+        fields=fields,
+    )
+
+
+# custom_orm\schema\metadata.py:
+class ModelMetadata:
+    def __init__(self, table_name, fields):
+        self.table_name = table_name
+        self.fields = fields
+
+
+# custom_orm\utils\__init__.py:
+from .logging import get_logger
+__all__ = ["get_logger"]
+
+
+# custom_orm\utils\logging.py:
+import logging
+from config.config import settings
+def get_logger(name="custom_orm"):
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.FileHandler(settings.LOG_FILE)
+        formatter = logging.Formatter(settings.LOG_FORMAT)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
+
+
+# custom_orm\utils\typing.py:
+from typing import Any, Dict, List, Type
+
+
+# custom_orm\validation\__init__.py:
+from .fields import validate_field
+from .models import validate_model
+__all__ = [
+    "validate_field",
+    "validate_model",
+]
+
+
+# custom_orm\validation\fields.py:
+def validate_field(field, value):
+    field.validate(value)
+
+
+# custom_orm\validation\models.py:
+def validate_model(model):
+    for field in model._meta.fields.values():
+        value = getattr(model, field.name, None)
+        field.validate(value)
+
+
+# tests\__init__.py:
+
+
+
+# tests\conftest.py:
+import pytest
+from custom_orm.database.connection import DatabaseConnection
+@pytest.fixture(autouse=True)
+def in_memory_db():
+    DatabaseConnection.initialize(":memory:", echo=False)
+    yield
+    DatabaseConnection.close()
+
+
+# tests\integration\__init__.py:
+
+
+
+# tests\integration\test_constraints.py:
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.database.executor import SQLExecutor
+class Item(Model):
+    id = IntegerField(primary_key=True)
+def test_primary_key_constraint():
+    SchemaGenerator.generate(Item)
+    SQLExecutor.execute("INSERT INTO item (id) VALUES (1)")
+    with pytest.raises(Exception):
+        SQLExecutor.execute(
+            "INSERT INTO item (id) VALUES (1)"
+        )
+
+
+# tests\integration\test_crud.py:
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField
+)
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.database.executor import SQLExecutor
+class User(Model):
+    id = IntegerField(primary_key=True)
+    name = TextField()
+def test_insert_and_select():
+    SchemaGenerator.generate(User)
+    SQLExecutor.execute(
+        "INSERT INTO user (id, name) VALUES (?, ?)",
+        [1, "Alice"]
+    )
+    cursor = SQLExecutor.execute(
+        "SELECT name FROM user WHERE id = ?", [1]
+    )
+    row = cursor.fetchone()
+    assert row["name"] == "Alice"
+
+
+# tests\integration\test_relationships.py:
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField,
+)
+from custom_orm.fields.relational import ForeignKey
+from custom_orm.schema.generator import SchemaGenerator
+class Author(Model):
+    id = IntegerField(primary_key=True)
+    name = TextField()
+class Book(Model):
+    id = IntegerField(primary_key=True)
+    author_id = ForeignKey(Author)
+def test_foreign_key_metadata():
+    SchemaGenerator.generate(Author)
+    SchemaGenerator.generate(Book)
+    assert "author_id" in Book._meta.fields
+
+
+# tests\integration\test_transactions.py:
+import pytest
+from custom_orm.database.transaction import Transaction
+from custom_orm.database.executor import SQLExecutor
+def test_transaction_rollback():
+    SQLExecutor.execute("CREATE TABLE test (id INTEGER)")
+    with pytest.raises(Exception):
+        with Transaction():
+            SQLExecutor.execute(
+                "INSERT INTO test (id) VALUES (1)"
+            )
+            raise RuntimeError("force rollback")
+    cursor = SQLExecutor.execute(
+        "SELECT * FROM test"
+    )
+    assert cursor.fetchone() is None
+
+
+# tests\performance\__init__.py:
+
+
+
+# tests\performance\test_query_scaling.py:
+from custom_orm.query.query import Query
+def test_query_filter_scaling():
+    q = Query(model=type(
+        "Dummy", (), {"__name__": "dummy"}
+    ))
+    for i in range(100):
+        q.filter(id=1)
+    assert len(q.filters) == 100
+
+
+# tests\regression\__init__.py:
+
+
+
+# tests\regression\test_reported_bugs.py:
+def test_placeholder_regression():
+    assert True
+
+
+# tests\unit\__init__.py:
+
+
+
+# tests\unit\database\__init__.py:
+
+
+
+# tests\unit\database\test_connection.py:
+from custom_orm.database.connection import DatabaseConnection
+def test_connection_singleton():
+    conn1 = DatabaseConnection.get_connection()
+    conn2 = DatabaseConnection.get_connection()
+    assert conn1 == conn2
+
+
+# tests\unit\database\test_executor.py:
+from custom_orm.database.executor import SQLExecutor
+def test_executor_runs_sql():
+    cursor = SQLExecutor.execute("SELECT 1")
+    assert cursor.fetchone()[0] == 1
+
+
+# tests\unit\database\test_transactions.py:
+from custom_orm.database.transaction import Transaction
+from custom_orm.database.executor import SQLExecutor
+def test_transaction_commit():
+    with Transaction():
+        SQLExecutor.execute("CREATE TABLE t (id INTEGER)")
+    cursor = SQLExecutor.execute(
+        "SELECT name FROM sqlite_master WHERE name = 't'"
+    )
+    assert cursor.fetchone() is not None
+
+
+# tests\unit\fields\__init__.py:
+
+
+
+# tests\unit\fields\test_base.py:
+import pytest
+from custom_orm.fields.base import Field
+def test_field_nullable_validation():
+    field = Field(nullable=False)
+    with pytest.raises(ValueError):
+        field.validate(None)
+
+
+# tests\unit\fields\test_relations.py:
+from custom_orm.fields.relational import ForeignKey
+def test_foreign_key_target():
+    class Target:
+        pass
+    fk = ForeignKey(Target)
+    assert fk.to is Target
+
+
+# tests\unit\fields\test_scalar.py:
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField,
+)
+def test_scalar_field_types():
+    assert IntegerField.sql_type == "INTEGER"
+    assert TextField.sql_type == "TEXT"
+
+
+# tests\unit\queries\__init__.py:
+
+
+
+# tests\unit\queries\test_compiler.py:
+from custom_orm.query.compiler import SQLCompiler
+from custom_orm.query.query import Query
+class Dummy:
+    __name__ = "dummy"
+def test_compile_select():
+    q = Query(Dummy).filter(id=1)
+    sql, params = SQLCompiler.compile_select(q)
+    assert "SELECT" in sql
+    assert params == [1]
+
+
+# tests\unit\queries\test_expressions.py:
+from custom_orm.query.expressions import Expression
+def test_expression_base():
+    assert Expression() is not None
+
+
+# tests\unit\queries\test_query.py:
+from custom_orm.query.query import Query
+def test_query_filter_chain():
+    q = Query(model=object)
+    q.filter(id=1).filter(name="x")
+    assert len(q.filters) == 2
+
+
+# tests\unit\schema\__init__.py:
+
+
+
+# tests\unit\schema\test_generator.py:
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.schema.generator import SchemaGenerator
+class Table(Model):
+    id = IntegerField(primary_key=True)
+def test_schema_generation():
+    SchemaGenerator.generate(Table)
+    assert True
+
+
+# tests\unit\schema\test_inspector.py:
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+def test_model_inspection():
+    class Test(Model):
+        id = IntegerField(primary_key=True)
+    assert hasattr(Test, "_meta")
+    assert "id" in Test._meta.fields
+
+
+# tests\unit\schema\test_metadata.py:
+from custom_orm.schema.metadata import ModelMetadata
+def test_metadata_storage():
+    meta = ModelMetadata("table", {})
+    assert meta.table_name == "table"
+
+
+# tests\unit\validation\__init__.py:
+
+
+
+# tests\unit\validation\test_fields.py:
+import pytest
+from custom_orm.fields.base import Field
+from custom_orm.validation.fields import validate_field
+def test_validate_field():
+    field = Field(nullable=False)
+    with pytest.raises(ValueError):
+        validate_field(field, None)
+
+
+# tests\unit\validation\test_models.py:
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.validation.models import validate_model
+class TestModel(Model):
+    id = IntegerField(primary_key=True, nullable=False)
+def test_validate_model():
+    obj = TestModel()
+    with pytest.raises(ValueError):
+        validate_model(obj)
+
+

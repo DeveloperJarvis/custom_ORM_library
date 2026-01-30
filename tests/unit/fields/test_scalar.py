@@ -34,4 +34,12 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField,
+)
 
+
+def test_scalar_field_types():
+    assert IntegerField.sql_type == "INTEGER"
+    assert TextField.sql_type == "TEXT"

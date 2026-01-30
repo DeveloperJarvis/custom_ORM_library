@@ -34,4 +34,18 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.schema.generator import SchemaGenerator
 
+
+# --------------------------------------------------
+# table
+# --------------------------------------------------
+class Table(Model):
+    id = IntegerField(primary_key=True)
+
+
+def test_schema_generation():
+    SchemaGenerator.generate(Table)
+    assert True

@@ -34,4 +34,12 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.fields.relational import ForeignKey
 
+
+def test_foreign_key_target():
+    class Target:
+        pass
+
+    fk = ForeignKey(Target)
+    assert fk.to is Target

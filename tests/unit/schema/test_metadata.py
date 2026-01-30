@@ -34,4 +34,9 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.schema.metadata import ModelMetadata
 
+
+def test_metadata_storage():
+    meta = ModelMetadata("table", {})
+    assert meta.table_name == "table"

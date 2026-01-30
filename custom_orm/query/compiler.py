@@ -35,3 +35,23 @@
 # imports
 # --------------------------------------------------
 
+
+# --------------------------------------------------
+# SQL compiler
+# --------------------------------------------------
+class SQLCompiler:
+    @staticmethod
+    def compile_select(query):
+        table = query.model.__name__.lower()
+        sql = f"SELECT * FROM {table}"
+        params = []
+
+        if query.filters:
+            clauses = []
+            for cond in query.filters:
+                for k, v in cond.items():
+                    clauses.append(f"{k} = ?")
+                    params.append(v)
+            sql += " WHERE " + " AND ".join(clauses)
+        
+        return sql, params

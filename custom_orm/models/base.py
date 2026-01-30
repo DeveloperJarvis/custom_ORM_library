@@ -34,4 +34,29 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.schema.inspector import inspect_model
+from custom_orm.models.registry import ModelRegistry
 
+
+# --------------------------------------------------
+# model meta
+# --------------------------------------------------
+class ModelMeta(type):
+    def __new__(cls, name, bases, attrs):
+        model = super().__new__(cls, name, bases, attrs)
+        if name != "Model":
+            inspect_model(model)
+            ModelRegistry.register(model)
+        return model
+
+
+# --------------------------------------------------
+# model
+# --------------------------------------------------
+class Model(metaclass=ModelMeta):
+    def __init__(self, **kwargs):
+        for name, field in self._meta.fields.items():
+            if name in kwargs:
+                setattr(self, name, kwargs[name])
+            else:
+                setattr(self, name, field.default)

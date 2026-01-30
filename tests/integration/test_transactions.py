@@ -34,4 +34,25 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.database.transaction import Transaction
+from custom_orm.database.executor import SQLExecutor
 
+
+def test_transaction_rollback():
+    SQLExecutor.execute("CREATE TABLE test (id INTEGER)")
+    
+    with pytest.raises(Exception):
+        with Transaction():
+            SQLExecutor.execute(
+                # "CREATE TABLE test (id INTEGER)"
+                "INSERT INTO test (id) VALUES (1)"
+            )
+            raise RuntimeError("force rollback")
+    
+    cursor = SQLExecutor.execute(
+        # "SELECT name FROM sqlite_master "
+        # "WHERE type='table' AND name='test'"
+        "SELECT * FROM test"
+    )
+    assert cursor.fetchone() is None

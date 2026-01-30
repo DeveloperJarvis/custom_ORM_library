@@ -34,4 +34,20 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.validation.models import validate_model
 
+
+# --------------------------------------------------
+# test
+# --------------------------------------------------
+class SampleModel(Model):
+    id = IntegerField(primary_key=True, nullable=False)
+
+
+def test_validate_model():
+    obj = SampleModel()
+    with pytest.raises(ValueError):
+        validate_model(obj)

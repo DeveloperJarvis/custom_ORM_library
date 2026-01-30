@@ -34,4 +34,15 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from .base import ORMError
+from .database import DatabaseError
+from .query import QueryError
+from .schema import SchemaError
 
+
+__all__ = [
+    "ORMError",
+    "DatabaseError",
+    "QueryError",
+    "SchemaError",
+]

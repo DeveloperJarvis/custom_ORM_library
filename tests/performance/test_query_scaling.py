@@ -34,4 +34,15 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.query.query import Query
 
+
+def test_query_filter_scaling():
+    q = Query(model=type(
+        "Dummy", (), {"__name__": "dummy"}
+    ))
+
+    for i in range(100):
+        q.filter(id=1)
+    
+    assert len(q.filters) == 100

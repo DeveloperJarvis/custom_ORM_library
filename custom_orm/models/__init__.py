@@ -34,4 +34,11 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from .base import Model
+from .registry import ModelRegistry
 
+
+__all__ = [
+    "Model",
+    "ModelRegistry",
+]

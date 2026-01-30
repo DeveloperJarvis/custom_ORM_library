@@ -35,3 +35,7 @@
 # imports
 # --------------------------------------------------
 
+
+def test_placeholder_regression():
+    # Prevent accidental test suite regression
+    assert True

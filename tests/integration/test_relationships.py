@@ -34,4 +34,34 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField,
+)
+from custom_orm.fields.relational import ForeignKey
+from custom_orm.schema.generator import SchemaGenerator
 
+
+# --------------------------------------------------
+# author
+# --------------------------------------------------
+class Author(Model):
+    id = IntegerField(primary_key=True)
+    name = TextField()
+
+
+# --------------------------------------------------
+# book
+# --------------------------------------------------
+class Book(Model):
+    id = IntegerField(primary_key=True)
+    author_id = ForeignKey(Author)
+
+
+def test_foreign_key_metadata():
+    SchemaGenerator.generate(Author)
+    SchemaGenerator.generate(Book)
+
+    assert "author_id" in Book._meta.fields

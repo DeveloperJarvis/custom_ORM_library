@@ -34,4 +34,10 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.query.query import Query
 
+
+def test_query_filter_chain():
+    q = Query(model=object)
+    q.filter(id=1).filter(name="x")
+    assert len(q.filters) == 2

@@ -34,4 +34,19 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.fields.base import Field
+from custom_orm.schema.metadata import ModelMetadata
 
+
+def inspect_model(model):
+    fields = {}
+
+    for name, attr in model.__dict__.items():
+        if isinstance(attr, Field):
+            attr.contribute_to_class(name)
+            fields[name] = attr
+    
+    model._meta = ModelMetadata(
+        table_name=model.__name__.lower(),
+        fields=fields,
+    )

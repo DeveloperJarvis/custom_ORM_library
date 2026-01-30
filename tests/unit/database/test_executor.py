@@ -34,4 +34,9 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.executor import SQLExecutor
 
+
+def test_executor_runs_sql():
+    cursor = SQLExecutor.execute("SELECT 1")
+    assert cursor.fetchone()[0] == 1

@@ -34,4 +34,11 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from .metadata import ModelMetadata
+from .generator import SchemaGenerator
 
+
+__all__ = [
+    "ModelMetadata",
+    "SchemaGenerator",
+]

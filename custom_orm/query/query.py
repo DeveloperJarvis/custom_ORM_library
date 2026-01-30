@@ -35,3 +35,15 @@
 # imports
 # --------------------------------------------------
 
+
+# --------------------------------------------------
+# query
+# --------------------------------------------------
+class Query:
+    def __init__(self, model):
+        self.model = model
+        self.filters = []
+    
+    def filter(self, **conditions):
+        self.filters.append(conditions)
+        return self

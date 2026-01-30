@@ -34,4 +34,12 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.fields.base import Field
 
+
+def test_field_nullable_validation():
+    field = Field(nullable=False)
+
+    with pytest.raises(ValueError):
+        field.validate(None)

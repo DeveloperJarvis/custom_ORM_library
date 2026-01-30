@@ -34,4 +34,35 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import (
+    IntegerField,
+    TextField
+)
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.database.executor import SQLExecutor
 
+
+# --------------------------------------------------
+# user
+# --------------------------------------------------
+class User(Model):
+    id = IntegerField(primary_key=True)
+    name = TextField()
+
+
+def test_insert_and_select():
+    SchemaGenerator.generate(User)
+
+    SQLExecutor.execute(
+        "INSERT INTO user (id, name) VALUES (?, ?)",
+        [1, "Alice"]
+    )
+
+    cursor = SQLExecutor.execute(
+        "SELECT name FROM user WHERE id = ?", [1]
+    )
+    row = cursor.fetchone()
+
+    assert row["name"] == "Alice"

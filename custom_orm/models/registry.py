@@ -35,3 +35,17 @@
 # imports
 # --------------------------------------------------
 
+
+# --------------------------------------------------
+# model registry
+# --------------------------------------------------
+class ModelRegistry:
+    _models = []
+
+    @classmethod
+    def register(cls, model):
+        cls._models.append(model)
+    
+    @classmethod
+    def all(cls):
+        return cls._models

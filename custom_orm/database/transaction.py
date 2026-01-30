@@ -34,4 +34,20 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.connection import DatabaseConnection
 
+
+# --------------------------------------------------
+# transaction
+# --------------------------------------------------
+class Transaction:
+    def __enter__(self):
+        self.conn = DatabaseConnection.get_connection()
+        self.conn.execute("BEGIN")
+        return self
+    
+    def __exit__(self, exc_type, exc, tb):
+        if exc:
+            self.conn.execute("ROLLBACK")
+        else:
+            self.conn.execute("COMMIT")

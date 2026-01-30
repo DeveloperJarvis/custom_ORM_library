@@ -34,4 +34,10 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.connection import DatabaseConnection
 
+
+def test_connection_singleton():
+    conn1 = DatabaseConnection.get_connection()
+    conn2 = DatabaseConnection.get_connection()
+    assert conn1 == conn2

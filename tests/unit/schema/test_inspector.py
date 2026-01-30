@@ -34,4 +34,13 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
 
+
+def test_model_inspection():
+    class Test(Model):
+        id = IntegerField(primary_key=True)
+    
+    assert hasattr(Test, "_meta")
+    assert "id" in Test._meta.fields

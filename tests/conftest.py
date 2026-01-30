@@ -34,4 +34,12 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.database.connection import DatabaseConnection
 
+
+@pytest.fixture(autouse=True)
+def in_memory_db():
+    DatabaseConnection.initialize(":memory:", echo=False)
+    yield
+    DatabaseConnection.close()

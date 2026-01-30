@@ -34,4 +34,16 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import logging
+from config.config import settings
 
+
+def get_logger(name="custom_orm"):
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.FileHandler(settings.LOG_FILE)
+        formatter = logging.Formatter(settings.LOG_FORMAT)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger

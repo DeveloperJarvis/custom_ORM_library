@@ -34,4 +34,26 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import pytest
+from custom_orm.models.base import Model
+from custom_orm.fields.scalar import IntegerField
+from custom_orm.schema.generator import SchemaGenerator
+from custom_orm.database.executor import SQLExecutor
 
+
+# --------------------------------------------------
+# item
+# --------------------------------------------------
+class Item(Model):
+    id = IntegerField(primary_key=True)
+
+
+def test_primary_key_constraint():
+    SchemaGenerator.generate(Item)
+
+    SQLExecutor.execute("INSERT INTO item (id) VALUES (1)")
+
+    with pytest.raises(Exception):
+        SQLExecutor.execute(
+            "INSERT INTO item (id) VALUES (1)"
+        )

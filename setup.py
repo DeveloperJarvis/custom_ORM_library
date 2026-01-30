@@ -30,8 +30,43 @@
 # --------------------------------------------------
 # setup MODULE
 # --------------------------------------------------
-
+"""
+Purpose: packaging, installation, dependency declaration.
+"""
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from setuptools import setup, find_packages
 
+
+setup(
+    name="custom-orm",
+    version="0.1.0",
+    description="A lightweight custom ORM mapping Python objects to SQLite",
+    author="Developer Jarvis",
+    author_email="developerjarvis@github.com",
+    url="https://github.com/DeveloperJarvis/custom_ORM_library",
+    license="GPL-3.0-or-later",
+    packages=find_packages(
+        exclude=("tests*", "logs*")
+    ),
+    include_package_data=True,
+    python_requires=">=3.9",
+    install_requires=[],
+    extras_require={
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "black",
+            "flake8",
+            "mypy",
+        ]
+    },
+    classifiers=[
+        "Programming Langauge :: Python :: 3",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "Operating System :: OS Independent",
+        "Topic :: Database",
+        "Topic :: Software Development :: Libraries",
+    ],
+)

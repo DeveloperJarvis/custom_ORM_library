@@ -35,3 +35,27 @@
 # imports
 # --------------------------------------------------
 
+
+# --------------------------------------------------
+# field
+# --------------------------------------------------
+class Field:
+    def __init__(
+            self,
+            primary_key=False,
+            nullable=True,
+            default=None,
+        ):
+        self.name = None
+        self.primary_key = primary_key
+        self.nullable = nullable
+        self.default = default
+    
+    def contribute_to_class(self, name):
+        self.name = name
+    
+    def validate(self, value):
+        if value is None and not self.nullable:
+            raise ValueError(
+                f"{self.name} cannot be NULL"
+            )

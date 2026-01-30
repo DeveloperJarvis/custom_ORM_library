@@ -34,4 +34,19 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from .base import Field
+from .scalar import (
+    IntegerField,
+    TextField,
+    BooleanField,
+)
+from .relational import ForeignKey
 
+
+__all__ = [
+    "Field",
+    "IntegerField",
+    "TextField",
+    "BooleanField",
+    "ForeignKey",
+]

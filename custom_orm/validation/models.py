@@ -35,3 +35,8 @@
 # imports
 # --------------------------------------------------
 
+
+def validate_model(model):
+    for field in model._meta.fields.values():
+        value = getattr(model, field.name, None)
+        field.validate(value)

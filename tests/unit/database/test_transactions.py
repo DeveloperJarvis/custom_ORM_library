@@ -34,4 +34,15 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.transaction import Transaction
+from custom_orm.database.executor import SQLExecutor
 
+
+def test_transaction_commit():
+    with Transaction():
+        SQLExecutor.execute("CREATE TABLE t (id INTEGER)")
+    
+    cursor = SQLExecutor.execute(
+        "SELECT name FROM sqlite_master WHERE name = 't'"
+    )
+    assert cursor.fetchone() is not None

@@ -34,4 +34,40 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+import sqlite3
+from threading import local
 
+
+# --------------------------------------------------
+# database connection
+# --------------------------------------------------
+class DatabaseConnection:
+    _state = local()
+
+    @classmethod
+    def initialize(cls, database: str, echo: bool = False):
+        cls._state.database = database
+        cls._state.echo = echo
+        cls._state.connection = None
+    
+    @classmethod
+    def get_connection(cls):
+        if not hasattr(cls._state, "database"):
+            raise RuntimeError(
+                "DatabaseConnection.initialize() must "
+                "be called first"
+            )
+        
+        if getattr(cls._state, "connection", None) is None:
+            cls._state.connection = sqlite3.connect(
+                cls._state.database
+            )
+            cls._state.connection.row_factory = sqlite3.Row
+        return cls._state.connection
+    
+    @classmethod
+    def close(cls):
+        conn = getattr(cls._state, "connection", None)
+        if conn:
+            conn.close()
+            cls._state.connection = None

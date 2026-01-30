@@ -34,4 +34,30 @@
 # --------------------------------------------------
 # imports
 # --------------------------------------------------
+from custom_orm.database.executor import SQLExecutor
 
+
+# --------------------------------------------------
+# schema generator
+# --------------------------------------------------
+class SchemaGenerator:
+    @staticmethod
+    def generate(model):
+        columns = []
+        for name, field in model._meta.fields.items():
+            col = f'"{name}" {field.sql_type}'
+            if field.primary_key:
+                col += " PRIMARY KEY"
+            columns.append(col)
+
+        sql = f"""
+        CREATE TABLE IF NOT EXISTS 
+        "{model._meta.table_name}" ({', '.join(columns)}
+        )
+        """
+        SQLExecutor.execute(sql)
+    
+    @classmethod
+    def generate_all(cls, models):
+        for model in models:
+            cls.generate(model)

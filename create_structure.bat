@@ -75,7 +75,7 @@ call :create_py_file "%ROOT%\custom_orm\validation\fields.py"
 call :create_py_file "%ROOT%\custom_orm\validation\models.py"
 
 call :create_py_file "%ROOT%\tests\__init__.py"
-call :create_py_file "%ROOT%\tests\confest.py"
+call :create_py_file "%ROOT%\tests\conftest.py"
 call :create_py_file "%ROOT%\tests\integration\__init__.py"
 call :create_py_file "%ROOT%\tests\integration\test_constraints.py"
 call :create_py_file "%ROOT%\tests\integration\test_crud.py"
